@@ -61,10 +61,13 @@ async def run_debate(request: DebateRequest):
             document_text=request.document_text,
             document_base64=request.document_base64,
         )
+        num_rounds = request.num_rounds if request.num_rounds is not None else settings.MAX_DEBATE_ROUNDS
+        num_judges = request.num_judges if request.num_judges is not None else 1
+        num_judges = max(1, min(3, int(num_judges)))
         result = await graph_run_debate(
             topic_with_context,
-            num_rounds=request.num_rounds or settings.MAX_DEBATE_ROUNDS,
-            num_judges=request.num_judges or 1,
+            num_rounds=num_rounds,
+            num_judges=num_judges,
         )
         return DebateResponse(**result)
     except Exception as e:
@@ -84,10 +87,13 @@ async def run_debate_stream(request: DebateRequest):
                 document_text=request.document_text,
                 document_base64=request.document_base64,
             )
+            num_rounds = request.num_rounds if request.num_rounds is not None else settings.MAX_DEBATE_ROUNDS
+            num_judges = request.num_judges if request.num_judges is not None else 1
+            num_judges = max(1, min(3, int(num_judges)))
             async for chunk in graph_run_debate_stream(
                 topic_with_context,
-                num_rounds=request.num_rounds or settings.MAX_DEBATE_ROUNDS,
-                num_judges=request.num_judges or 1,
+                num_rounds=num_rounds,
+                num_judges=num_judges,
             ):
                 yield chunk
         except Exception as e:

@@ -65,7 +65,7 @@ async def moderator_node(state: DebateState) -> dict:
     intro = await ModeratorAgent.introduce(topic)
     entry = DebateEntry(speaker=Speaker.MODERATOR, text=intro, round_number=0)
     logger.info("agent response", extra={"agent": "moderator"})
-    return {"transcript": [entry.model_dump()]}
+    return {"transcript": [entry.model_dump()], "num_judges": state.get("num_judges", 1)}
 
 
 async def openings_node(state: DebateState) -> dict:
@@ -81,7 +81,7 @@ async def openings_node(state: DebateState) -> dict:
     con_entry = DebateEntry(speaker=Speaker.CON, text=con_text, round_number=1)
     logger.info("agent response", extra={"agent": "pro", "phase": "opening"})
     logger.info("agent response", extra={"agent": "con", "phase": "opening"})
-    return {"transcript": [pro_entry.model_dump(), con_entry.model_dump()], "round": 1}
+    return {"transcript": [pro_entry.model_dump(), con_entry.model_dump()], "round": 1, "num_judges": state.get("num_judges", 1)}
 
 
 async def rebuttals_node(state: DebateState) -> dict:
@@ -99,7 +99,7 @@ async def rebuttals_node(state: DebateState) -> dict:
     con_entry = DebateEntry(speaker=Speaker.CON, text=con_text, round_number=round_num)
     logger.info("agent response", extra={"agent": "pro", "phase": "rebuttal", "round": round_num})
     logger.info("agent response", extra={"agent": "con", "phase": "rebuttal", "round": round_num})
-    return {"transcript": [pro_entry.model_dump(), con_entry.model_dump()], "round": round_num} 
+    return {"transcript": [pro_entry.model_dump(), con_entry.model_dump()], "round": round_num, "num_judges": state.get("num_judges", 1)} 
 
 
 async def judge_node(state: DebateState) -> dict:

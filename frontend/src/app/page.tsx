@@ -239,85 +239,86 @@ export default function Home() {
         {/* Input section */}
         <section className="mb-12">
           <div className="rounded-2xl border border-slate-800 bg-slate-900/30 p-8 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Debate topic - full width, prominent */}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Debate topic
+              </label>
+              <input
+                type="text"
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                placeholder="e.g. Should AI replace human teachers?"
+                className="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-5 py-4 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all text-base min-h-[52px]"
+                disabled={loading}
+              />
+            </div>
+
+            {/* Rounds & Judges - horizontal row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md">
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Debate topic
+                  Rounds
                 </label>
-                <input
-                  type="text"
-                  value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
-                  placeholder="e.g. Should AI replace human teachers?"
-                  className="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all md:col-span-2"
+                <select
+                  value={numRounds}
+                  onChange={(e) => setNumRounds(Number(e.target.value))}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3 text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
                   disabled={loading}
-                />
+                >
+                  <option value={1}>1 (opening only)</option>
+                  <option value={2}>2 (opening + 1 rebuttal)</option>
+                  <option value={3}>3 (opening + 2 rebuttals)</option>
+                </select>
               </div>
-              <div className="flex gap-4 md:flex-col md:gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
-                    Rounds
-                  </label>
-                  <select
-                    value={numRounds}
-                    onChange={(e) => setNumRounds(Number(e.target.value))}
-                    className="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3 text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-                    disabled={loading}
-                  >
-                    <option value={1}>1 (opening only)</option>
-                    <option value={2}>2 (opening + 1 rebuttal)</option>
-                    <option value={3}>3 (opening + 2 rebuttals)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
-                    Judges
-                  </label>
-                  <select
-                    value={numJudges}
-                    onChange={(e) => setNumJudges(Number(e.target.value))}
-                    className="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3 text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-                    disabled={loading}
-                  >
-                    <option value={1}>1</option>
-                    <option value={2}>2</option>
-                    <option value={3}>3</option>
-                  </select>
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Judges
+                </label>
+                <select
+                  value={numJudges}
+                  onChange={(e) => setNumJudges(Number(e.target.value))}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3 text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                  disabled={loading}
+                >
+                  <option value={1}>1</option>
+                  <option value={2}>2</option>
+                  <option value={3}>3</option>
+                </select>
               </div>
             </div>
 
-            {/* Image & Document context */}
+            {/* Image & Document context - equal cards, aligned */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="rounded-xl border border-slate-700/50 bg-slate-800/30 p-4">
-                <p className="text-sm font-medium text-slate-300 mb-2">Add image context (optional)</p>
-                <p className="text-xs text-slate-500 mb-3">Debate based on what&apos;s in the image</p>
-                <div className="flex gap-3 items-start">
-                  <label className="cursor-pointer px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium transition-colors">
+              <div className="rounded-xl border border-slate-700/50 bg-slate-800/30 p-5 min-h-[140px] flex flex-col">
+                <p className="text-sm font-medium text-slate-300 mb-1">Add image context (optional)</p>
+                <p className="text-xs text-slate-500 mb-4">Debate based on what&apos;s in the image</p>
+                <div className="flex gap-3 items-center flex-1">
+                  <label className="cursor-pointer px-5 py-2.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium transition-colors shrink-0">
                     <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
                     Choose image
                   </label>
                   {imagePreview && (
-                    <div className="relative">
+                    <div className="relative flex-shrink-0">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={imagePreview} alt="Preview" className="h-20 w-20 object-cover rounded-lg border border-slate-600" />
-                      <button onClick={clearImage} className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-rose-500 text-white text-xs flex items-center justify-center hover:bg-rose-400">×</button>
+                      <img src={imagePreview} alt="Preview" className="h-16 w-16 sm:h-20 sm:w-20 object-cover rounded-lg border border-slate-600" />
+                      <button onClick={clearImage} className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-rose-500 text-white text-sm flex items-center justify-center hover:bg-rose-400" aria-label="Remove image">×</button>
                     </div>
                   )}
                 </div>
               </div>
-              <div className="rounded-xl border border-slate-700/50 bg-slate-800/30 p-4">
-                <p className="text-sm font-medium text-slate-300 mb-2">Add document context (optional)</p>
-                <p className="text-xs text-slate-500 mb-3">Debate based on PDF or text file</p>
-                <div className="flex gap-3 items-center">
-                  <label className="cursor-pointer px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium transition-colors">
+              <div className="rounded-xl border border-slate-700/50 bg-slate-800/30 p-5 min-h-[140px] flex flex-col">
+                <p className="text-sm font-medium text-slate-300 mb-1">Add document context (optional)</p>
+                <p className="text-xs text-slate-500 mb-4">Debate based on PDF or text file</p>
+                <div className="flex gap-3 items-center flex-1">
+                  <label className="cursor-pointer px-5 py-2.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium transition-colors shrink-0">
                     <input type="file" accept=".pdf,.txt" className="hidden" onChange={handleDocumentUpload} />
                     Choose file
                   </label>
                   {documentName && (
-                    <span className="text-sm text-slate-400 truncate max-w-[120px]">
+                    <span className="text-sm text-slate-400 truncate max-w-[180px] flex items-center gap-2">
                       {documentName}
-                      <button onClick={clearDocument} className="ml-2 text-rose-400 hover:text-rose-300">×</button>
+                      <button onClick={clearDocument} className="text-rose-400 hover:text-rose-300 shrink-0" aria-label="Remove document">×</button>
                     </span>
                   )}
                 </div>
