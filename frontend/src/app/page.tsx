@@ -376,6 +376,77 @@ export default function Home() {
 
             <div className="space-y-6">
               {transcript.map((entry, i) => {
+                if (entry.speaker === "judge" && verdict?.judge_verdicts && verdict.judge_verdicts.length > 1) {
+                  return (
+                    <div key={i} className="space-y-6">
+                      <h3 className="text-lg font-semibold text-violet-300">Judge evaluations</h3>
+                      {verdict.judge_verdicts.map((jv, idx) => {
+                        const proTotal = jv.pro_scores.total ?? (jv.pro_scores.logical_consistency + jv.pro_scores.evidence_strength + jv.pro_scores.rebuttal_effectiveness + jv.pro_scores.clarity);
+                        const conTotal = jv.con_scores.total ?? (jv.con_scores.logical_consistency + jv.con_scores.evidence_strength + jv.con_scores.rebuttal_effectiveness + jv.con_scores.clarity);
+                        return (
+                          <div key={idx} className="rounded-2xl border-2 border-violet-500/30 bg-gradient-to-br from-violet-950/20 to-slate-900/50 p-6 animate-fade-in shadow-xl">
+                            <div className="flex items-center gap-3 mb-4">
+                              <div className="w-12 h-12 rounded-xl bg-violet-500/20 flex items-center justify-center text-xl ring-2 ring-violet-500/30">
+                                ⚖
+                              </div>
+                              <span className="text-violet-300 font-bold text-lg">Judge {idx + 1}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                              <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                                <span className="text-emerald-400 font-semibold">Pro</span>
+                                <span className="ml-2 font-mono text-lg text-slate-200">{proTotal} pts</span>
+                                <p className="text-xs text-slate-500 mt-2">Logic {jv.pro_scores.logical_consistency} · Evidence {jv.pro_scores.evidence_strength} · Rebuttal {jv.pro_scores.rebuttal_effectiveness} · Clarity {jv.pro_scores.clarity}</p>
+                              </div>
+                              <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20">
+                                <span className="text-rose-400 font-semibold">Con</span>
+                                <span className="ml-2 font-mono text-lg text-slate-200">{conTotal} pts</span>
+                                <p className="text-xs text-slate-500 mt-2">Logic {jv.con_scores.logical_consistency} · Evidence {jv.con_scores.evidence_strength} · Rebuttal {jv.con_scores.rebuttal_effectiveness} · Clarity {jv.con_scores.clarity}</p>
+                              </div>
+                            </div>
+                            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 mb-4">
+                              <span className="text-amber-400 font-bold">Winner: {jv.winner.toUpperCase()}</span>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-slate-400">Reasoning:</span>
+                              <p className="mt-2 text-slate-300 leading-relaxed">{jv.reasoning}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <div className="rounded-2xl border-2 border-violet-500/40 bg-gradient-to-br from-violet-950/40 to-slate-900/50 p-8 shadow-2xl animate-fade-in">
+                        <div className="flex items-center gap-4 mb-6">
+                          <div className="w-14 h-14 rounded-2xl bg-violet-500/20 flex items-center justify-center text-2xl ring-2 ring-violet-500/30">
+                            ⚖
+                          </div>
+                          <div>
+                            <h3 className="text-xl font-bold text-violet-300">Final verdict</h3>
+                            <p className="text-slate-500 text-sm">Aggregated from all judges</p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-6 mb-6">
+                          <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                            <span className="text-emerald-400 font-semibold">Pro</span>
+                            <span className="ml-2 font-mono text-lg text-slate-200">
+                              {verdict.pro_scores.total ?? (verdict.pro_scores.logical_consistency + verdict.pro_scores.evidence_strength + verdict.pro_scores.rebuttal_effectiveness + verdict.pro_scores.clarity)}
+                            </span>
+                            <span className="text-slate-500 ml-1">pts</span>
+                          </div>
+                          <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20">
+                            <span className="text-rose-400 font-semibold">Con</span>
+                            <span className="ml-2 font-mono text-lg text-slate-200">
+                              {verdict.con_scores.total ?? (verdict.con_scores.logical_consistency + verdict.con_scores.evidence_strength + verdict.con_scores.rebuttal_effectiveness + verdict.con_scores.clarity)}
+                            </span>
+                            <span className="text-slate-500 ml-1">pts</span>
+                          </div>
+                        </div>
+                        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 mb-4">
+                          <span className="text-amber-400 font-bold text-lg">Winner: {verdict.winner.toUpperCase()}</span>
+                        </div>
+                        <p className="text-slate-400 leading-relaxed">{verdict.reasoning}</p>
+                      </div>
+                    </div>
+                  );
+                }
                 const config = speakerConfig[entry.speaker] || {
                   label: entry.speaker,
                   bg: "from-slate-700/10 to-slate-800/5",
@@ -416,59 +487,16 @@ export default function Home() {
               })}
             </div>
 
-            {/* Individual judge evaluations */}
-            {verdict?.judge_verdicts && verdict.judge_verdicts.length > 1 && (
-              <div className="space-y-6">
-                <h3 className="text-lg font-semibold text-slate-200">
-                  Individual judge evaluations
-                </h3>
-                {verdict.judge_verdicts.map((jv, idx) => {
-                  const proTotal = jv.pro_scores.total ?? (jv.pro_scores.logical_consistency + jv.pro_scores.evidence_strength + jv.pro_scores.rebuttal_effectiveness + jv.pro_scores.clarity);
-                  const conTotal = jv.con_scores.total ?? (jv.con_scores.logical_consistency + jv.con_scores.evidence_strength + jv.con_scores.rebuttal_effectiveness + jv.con_scores.clarity);
-                  return (
-                    <div key={idx} className="rounded-2xl border border-violet-500/20 bg-slate-900/50 p-6 animate-fade-in">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center text-lg ring-2 ring-violet-500/30">
-                          ⚖
-                        </div>
-                        <span className="text-violet-300 font-semibold">Judge {idx + 1}</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4 mb-4">
-                        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                          <span className="text-emerald-400 font-medium">Pro</span>
-                          <span className="ml-2 font-mono text-slate-200">{proTotal} pts</span>
-                          <p className="text-xs text-slate-500 mt-1">Logic {jv.pro_scores.logical_consistency} · Evidence {jv.pro_scores.evidence_strength} · Rebuttal {jv.pro_scores.rebuttal_effectiveness} · Clarity {jv.pro_scores.clarity}</p>
-                        </div>
-                        <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20">
-                          <span className="text-rose-400 font-medium">Con</span>
-                          <span className="ml-2 font-mono text-slate-200">{conTotal} pts</span>
-                          <p className="text-xs text-slate-500 mt-1">Logic {jv.con_scores.logical_consistency} · Evidence {jv.con_scores.evidence_strength} · Rebuttal {jv.con_scores.rebuttal_effectiveness} · Clarity {jv.con_scores.clarity}</p>
-                        </div>
-                      </div>
-                      <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 mb-3">
-                        <span className="text-amber-400 font-bold">Winner: {jv.winner.toUpperCase()}</span>
-                      </div>
-                      <p className="text-slate-400 text-sm leading-relaxed">{jv.reasoning}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Single judge or final verdict */}
-            {verdict && (
+            {/* Single judge verdict (when only 1 judge, verdict section is separate) */}
+            {verdict && (!verdict.judge_verdicts || verdict.judge_verdicts.length <= 1) && (
               <div className="rounded-2xl border-2 border-violet-500/30 bg-gradient-to-br from-violet-950/30 to-slate-900/50 p-8 shadow-2xl animate-fade-in">
                 <div className="flex items-center gap-4 mb-6">
                   <div className="w-14 h-14 rounded-2xl bg-violet-500/20 flex items-center justify-center text-2xl ring-2 ring-violet-500/30">
                     ⚖
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-violet-300">
-                      {verdict.judge_verdicts && verdict.judge_verdicts.length > 1 ? "Final verdict" : "Verdict"}
-                    </h3>
-                    <p className="text-slate-500 text-sm">
-                      {verdict.judge_verdicts && verdict.judge_verdicts.length > 1 ? "Aggregated from all judges" : "Final evaluation"}
-                    </p>
+                    <h3 className="text-xl font-bold text-violet-300">Verdict</h3>
+                    <p className="text-slate-500 text-sm">Final evaluation</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-6 mb-6">
