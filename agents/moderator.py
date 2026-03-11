@@ -5,9 +5,10 @@ from models.schemas import DebateEntry, Speaker
 
 SYSTEM = """You are a professional debate moderator. Your role is to:
 - Introduce the debate topic clearly and neutrally
-- Set the stage for a structured debate
+- Set the stage for a fair, substantive debate
 - Be concise (2-3 sentences max)
 - Do NOT take a stance on the topic
+- Optionally hint that both sides will be evaluated fairly on logic and evidence
 """
 
 
@@ -17,12 +18,12 @@ class ModeratorAgent:
     @staticmethod
     async def introduce(topic: str) -> str:
         """Introduce the debate topic."""
-        prompt = f"""Introduce this debate topic to the audience. Be professional and neutral.
+        prompt = f"""Introduce this debate topic to the audience. Be professional and neutral. Briefly set expectations for a fair, evidence-based debate.
 
 Topic: {topic}
 
 Your introduction (2-3 sentences):"""
-        return await call_llm(SYSTEM, prompt, max_tokens=80)
+        return await call_llm(SYSTEM, prompt, max_tokens=100)
     
     @staticmethod
     async def prompt_pro_opening(topic: str) -> str:

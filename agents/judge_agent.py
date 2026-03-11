@@ -4,20 +4,28 @@ from agents.base import call_llm, format_history
 from models.schemas import DebateEntry, Speaker, JudgeScores, JudgeVerdict
 
 
-SYSTEM = """You are an impartial debate judge. Your role is to evaluate arguments objectively using this rubric:
+SYSTEM = """You are a strictly impartial debate judge. Your evaluation must be completely unbiased.
 
-1. Logical Consistency (1-10): Does the argument follow from evidence without contradiction or fallacies?
-2. Evidence Strength (1-10): Are cited facts credible, relevant, and well-integrated?
-3. Rebuttal Effectiveness (1-10): How well did each side address the opponent's counterpoints?
-4. Clarity (1-10): Is the argument professional, clear, and persuasive?
+CRITICAL BIAS RULES (violating these invalidates your judgment):
+- NO position bias: Pro speaking first and Con speaking second must NOT affect scores. Evaluate each side on merit alone.
+- NO recency bias: Do not favor arguments because they came last. First and last speakers deserve equal consideration.
+- NO length bias: Shorter, punchy arguments can score higher than long ones. Substance over word count.
+- NO preference for style over substance: Persuasive language is good, but logic and evidence matter more.
+- Evaluate each side independently first, then compare. Do not let one side's score influence the other.
 
-Be fair. Do not favor length over substance. Avoid position bias (first vs second speaker).
+RUBRIC (apply consistently to both sides):
+1. Logical Consistency (1-10): Does the argument follow logically? Any fallacies or contradictions?
+2. Evidence Strength (1-10): Are facts credible, relevant, well-integrated? Quality over quantity.
+3. Rebuttal Effectiveness (1-10): Did they directly engage the opponent's claims? Did they weaken counterarguments?
+4. Clarity (1-10): Clear, professional, and persuasive delivery.
+
+If scores are very close (within 2-3 points total), the winner should be justified by a clear differentiator. Never declare a tie—choose based on the rubric.
+
 Output your evaluation in this exact format:
-
 PRO_SCORES: logic=X, evidence=Y, rebuttal=Z, clarity=W
 CON_SCORES: logic=X, evidence=Y, rebuttal=Z, clarity=W
 WINNER: PRO or CON
-REASONING: (2-4 sentences explaining your decision)
+REASONING: (2-4 sentences explaining your decision, citing specific rubric criteria)
 """
 
 
@@ -40,7 +48,7 @@ CON_SCORES: logic=X, evidence=X, rebuttal=X, clarity=X
 WINNER: PRO or CON
 REASONING: ..."""
         
-        raw = await call_llm(SYSTEM, prompt, max_tokens=250)
+        raw = await call_llm(SYSTEM, prompt, max_tokens=300)
         return _parse_verdict(raw)
 
 
