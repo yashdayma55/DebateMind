@@ -1,39 +1,147 @@
 @import "tailwindcss";
 
+/* DebateMind — Cyber-tactical dark UI theme */
 :root {
-  --background: #0f172a;
-  --foreground: #f8fafc;
-  --accent: #f59e0b;
-  --accent-hover: #d97706;
+  --bg-deep: #020810;
+  --bg-card: #080E18;
+  --bg-sidebar: #050A12;
+  --border-default: rgba(0, 200, 255, 0.10);
+  --border-active: rgba(0, 200, 255, 0.35);
+  --accent-cyan: #00D2FF;
+  --accent-gold: #FFD700;
+  --accent-green: #00FF9D;
+  --accent-red: #FF4D6D;
+  --accent-purple: #C084FC;
+  --accent-blue: #63B3ED;
+  --text-primary: #E8F4FD;
+  --text-muted: #3D6080;
+  --text-dim: rgba(232, 244, 253, 0.55);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--bg-deep);
+  --color-foreground: var(--text-primary);
+  --font-serif: Georgia, "Times New Roman", serif;
+  --font-mono: "Courier New", Courier, monospace;
+  --font-body: "Trebuchet MS", Arial, sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  background-color: #020810;
+  color: #E8F4FD;
+  font-family: "Trebuchet MS", Arial, sans-serif;
+  min-height: 100vh;
+}
+
+/* Grid + radial atmosphere background */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(0, 200, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 200, 255, 0.04) 1px, transparent 1px),
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(0, 150, 255, 0.15), transparent 50%),
+    radial-gradient(ellipse 60% 40% at 0% 100%, rgba(192, 132, 252, 0.12), transparent 50%),
+    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(255, 77, 109, 0.12), transparent 50%);
+  background-size: 40px 40px, 40px 40px, 100% 100%, 100% 100%, 100% 100%;
+}
+
+/* Section label */
+.section-label {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 10px;
+  color: #00D2FF;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+
+/* Typography */
+.font-display {
+  font-family: Georgia, "Times New Roman", serif;
+}
+.font-mono-label {
+  font-family: "Courier New", Courier, monospace;
+}
+.font-body {
+  font-family: "Trebuchet MS", Arial, sans-serif;
+}
+
+/* Glow effects */
+.glow-cyan {
+  box-shadow: 0 0 16px rgba(0, 210, 255, 0.25);
+}
+.glow-green {
+  box-shadow: 0 0 16px rgba(0, 255, 157, 0.25);
+}
+.glow-red {
+  box-shadow: 0 0 16px rgba(255, 77, 109, 0.2);
+}
+.glow-purple {
+  box-shadow: 0 0 16px rgba(192, 132, 252, 0.2);
+}
+.glow-gold {
+  box-shadow: 0 0 16px rgba(255, 215, 0, 0.15);
+}
+
+/* Card shadow */
+.card-shadow {
+  box-shadow: 0 0 50px rgba(0, 150, 255, 0.07), 0 30px 60px rgba(0, 0, 0, 0.5);
+}
+
+/* Pulse animation for status dot */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.animate-pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* Bouncing dots for streaming */
+@keyframes bounce-dot {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.4); }
+}
+.animate-bounce-dot {
+  animation: bounce-dot 0.6s ease-in-out infinite;
+}
+.animate-bounce-dot-2 { animation-delay: 0.2s; }
+.animate-bounce-dot-3 { animation-delay: 0.4s; }
+
+/* Blinking cursor */
+@keyframes blink-cursor {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* Score bar */
+.score-bar {
+  height: 5px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+}
+.score-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.6s ease-out;
+}
+
+/* Gradient text for logo */
+.logo-gradient {
+  background: linear-gradient(135deg, #00D2FF, #6699FF, #FFD700);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 @keyframes fade-in {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
-
 .animate-fade-in {
-  animation: fade-in 0.4s ease-out forwards;
-}
-
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(245, 158, 11, 0.2); }
-  50% { box-shadow: 0 0 30px rgba(245, 158, 11, 0.35); }
-}
-
-.pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
+  animation: fade-in 0.5s ease-out forwards;
 }
