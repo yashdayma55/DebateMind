@@ -1,0 +1,65 @@
+# CI/CD for DebateMind
+# - Lint and test backend
+# - Build frontend
+# - Optional: deploy to Render (set RENDER_DEPLOY_HOOK)
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Verify imports
+        run: python -c "
+          from debate_engine.debate_graph import build_debate_graph
+          g = build_debate_graph()
+          print('LangGraph OK')
+        "
+        env:
+          OPENAI_API_KEY: sk-dummy
+          OPENAI_API_BASE: https://api.openai.com/v1
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package.json
+
+      - name: Install and build
+        run: |
+          cd frontend
+          npm install
+          npm run build
+
+  # Trigger Render deploy on push to main (if deploy hook configured)
+  deploy:
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Trigger Render deploy
+        run: |
+          if [ -n "${{ secrets.RENDER_DEPLOY_HOOK }}" ]; then
+            curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+          fi

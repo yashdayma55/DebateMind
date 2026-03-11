@@ -10,6 +10,5 @@ openai>=1.12.0
 httpx>=0.26.0
 pypdf>=4.0.0
 
-# Optional: LangChain for future orchestration
-# langchain>=0.1.0
-# langchain-openai>=0.0.5
+# LangGraph - orchestration & parallel workflows
+langgraph>=0.2.0

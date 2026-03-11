@@ -26,7 +26,9 @@ interface JudgeVerdict {
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function Home() {
-  const [topic, setTopic] = useState("Should AI replace human teachers?");
+  const [topic, setTopic] = useState("");
+  const [numRounds, setNumRounds] = useState(2);
+  const [numJudges, setNumJudges] = useState(1);
   const [loading, setLoading] = useState(false);
   const [transcript, setTranscript] = useState<DebateEntry[]>([]);
   const [verdict, setVerdict] = useState<JudgeVerdict | null>(null);
@@ -94,10 +96,12 @@ export default function Home() {
     setVerdict(null);
     setShowInfo(false);
     try {
-      const body: Record<string, string> = { topic };
+      const body: Record<string, unknown> = { topic };
       if (imageBase64) body.image_base64 = imageBase64;
       if (documentText) body.document_text = documentText;
       if (documentBase64) body.document_base64 = documentBase64;
+      body.num_rounds = numRounds;
+      body.num_judges = numJudges;
 
       const res = await fetch(`${API_URL}/debate/stream`, {
         method: "POST",
@@ -235,10 +239,52 @@ export default function Home() {
         {/* Input section */}
         <section className="mb-12">
           <div className="rounded-2xl border border-slate-800 bg-slate-900/30 p-8 space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-3">
-                Debate topic
-              </label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Debate topic
+                </label>
+                <input
+                  type="text"
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  placeholder="e.g. Should AI replace human teachers?"
+                  className="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all md:col-span-2"
+                  disabled={loading}
+                />
+              </div>
+              <div className="flex gap-4 md:flex-col md:gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Rounds
+                  </label>
+                  <select
+                    value={numRounds}
+                    onChange={(e) => setNumRounds(Number(e.target.value))}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3 text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                    disabled={loading}
+                  >
+                    <option value={1}>1 (opening only)</option>
+                    <option value={2}>2 (opening + 1 rebuttal)</option>
+                    <option value={3}>3 (opening + 2 rebuttals)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Judges
+                  </label>
+                  <select
+                    value={numJudges}
+                    onChange={(e) => setNumJudges(Number(e.target.value))}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3 text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                    disabled={loading}
+                  >
+                    <option value={1}>1</option>
+                    <option value={2}>2</option>
+                    <option value={3}>3</option>
+                  </select>
+                </div>
+              </div>
             </div>
 
             {/* Image & Document context */}
@@ -284,15 +330,7 @@ export default function Home() {
               </p>
             )}
 
-            <div className="flex flex-col sm:flex-row gap-4">
-              <input
-                type="text"
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                placeholder="e.g. Should AI replace human teachers?"
-                className="flex-1 rounded-xl border border-slate-700 bg-slate-800/50 px-5 py-4 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all"
-                disabled={loading}
-              />
+            <div className="flex justify-end">
               <button
                 onClick={runDebate}
                 disabled={loading || !topic.trim()}

@@ -37,6 +37,8 @@ Inspired by the [Dr. Zero](https://arxiv.org/abs/2601.07055) paper and multi-age
 | **Image Context** | Upload an image to provide visual context. A vision model (e.g., LLaVA, GPT-4o) describes the image, and agents base arguments on that description. |
 | **Document Context** | Upload a PDF or TXT file. Text is extracted (PDF via PyPDF) and injected into the debate topic; agents ground arguments in the document. |
 | **LLM Flexibility** | Works with OpenAI API or any OpenAI-compatible endpoint (e.g., Ollama, local models). Configure `OPENAI_API_BASE`, `LLM_MODEL`, and optionally `VISION_MODEL`. |
+| **LangGraph Orchestration** | Debate flow is defined as a LangGraph workflow for cleaner architecture and easier scaling. |
+| **Parallel Execution** | Pro + Con opening and rebuttals run in parallel (~30–40% faster debates). |
 | **CLI Mode** | Run debates from the terminal without the web UI via `python run_cli.py`. |
 | **Dark UI** | Modern Next.js frontend with dark theme, role avatars, and collapsible project info. |
 
@@ -77,9 +79,9 @@ Inspired by the [Dr. Zero](https://arxiv.org/abs/2601.07055) paper and multi-age
                                            │
                                            ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                    Debate Manager (debate_engine/manager.py)                 │
-│  • Orchestrates agents in order: Moderator → Pro → Con → rebuttals → Judge   │
-│  • Maintains transcript (history)                                            │
+│            LangGraph Debate Engine (debate_engine/debate_graph.py)           │
+│  • Moderator → (Pro+Con opening in parallel) → (Pro+Con rebuttal in parallel)│
+│  • StateGraph with DebateState; nodes: moderator, openings, rebuttals, judge │
 │  • run_debate() / run_debate_stream()                                        │
 └──────────────────────────────────────────┬──────────────────────────────────┘
                                            │
@@ -121,11 +123,10 @@ Inspired by the [Dr. Zero](https://arxiv.org/abs/2601.07055) paper and multi-age
 1. **User** submits topic (optional: image, document).
 2. **Context Utils** build `topic_with_context` (topic + image description + document text).
 3. **Moderator** introduces the topic.
-4. **Pro** delivers opening argument (based on topic + context).
-5. **Con** delivers opening argument (based on topic + context).
-6. **Rebuttal rounds** (1 to `MAX_DEBATE_ROUNDS - 1`): Pro and Con alternate rebuttals.
-7. **Judge** evaluates transcript, outputs scores and winner.
-8. **Frontend** displays transcript and verdict (streamed or full response).
+4. **Pro + Con** deliver opening arguments **in parallel** (based on topic + context).
+5. **Rebuttal rounds** (1 to `MAX_DEBATE_ROUNDS - 1`): Pro and Con rebut **in parallel**.
+6. **Judge** evaluates transcript, outputs scores and winner.
+7. **Frontend** displays transcript and verdict (streamed or full response).
 
 ---
 
@@ -150,6 +151,9 @@ DebateMind/
 │   ├── config.py         # Settings (LLM_MODEL, VISION_MODEL, MAX_DEBATE_ROUNDS, etc.)
 │   ├── llm_client.py     # OpenAI client, generate(), generate_with_image()
 │   └── context_utils.py  # Image description, PDF extraction, build_debate_context()
+├── debate_engine/
+│   ├── debate_graph.py   # LangGraph workflow (parallel Pro+Con)
+│   └── manager.py        # Legacy sequential manager (deprecated)
 ├── agents/
 │   ├── base.py           # format_history(), call_llm()
 │   ├── moderator.py      # ModeratorAgent.introduce()
@@ -157,7 +161,8 @@ DebateMind/
 │   ├── con_agent.py      # ConAgent.opening_argument(), rebuttal()
 │   └── judge_agent.py    # JudgeAgent.evaluate(), verdict parsing
 ├── debate_engine/
-│   └── manager.py        # DebateManager: run_debate(), run_debate_stream()
+│   ├── debate_graph.py   # LangGraph workflow (primary)
+│   └── manager.py        # Legacy manager (deprecated)
 ├── models/
 │   └── schemas.py        # DebateRequest, DebateResponse, DebateEntry, JudgeVerdict, Speaker, JudgeScores
 ├── frontend/
@@ -173,6 +178,9 @@ DebateMind/
 │   └── package.json
 ├── data/                 # Reserved for future use (transcripts, RAG)
 ├── run_cli.py            # CLI entrypoint (no frontend)
+├── Dockerfile            # Backend container
+├── render.yaml           # Render.com deployment
+├── .github/workflows/deploy.yml  # CI/CD (backend + frontend + deploy hook)
 ├── requirements.txt
 ├── .env.example
 ├── .gitignore
@@ -341,6 +349,18 @@ The Judge outputs:
 - **PDF:** Sent in `document_base64`; text is extracted with PyPDF, then injected into the topic.
 
 Document text is capped at ~6000 characters to stay within context limits.
+
+---
+
+## Deployment
+
+| Platform | Purpose | Config |
+|----------|---------|--------|
+| **Vercel** | Frontend | `frontend/vercel.json` — set `NEXT_PUBLIC_API_URL` to your backend URL |
+| **Render** | Backend API | `render.yaml` — start command: `uvicorn backend.main:app --host 0.0.0.0 --port 10000` |
+| **Docker** | Backend container | `Dockerfile` — `docker build -t debate-mind . && docker run -p 10000:10000 -e OPENAI_API_KEY=... debate-mind` |
+
+**CI/CD:** GitHub Actions (`.github/workflows/deploy.yml`) runs on push/PR: verifies backend imports, builds frontend. Optionally trigger Render deploy by adding `RENDER_DEPLOY_HOOK` as a repo secret.
 
 ---
 

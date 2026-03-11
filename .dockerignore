@@ -1,0 +1,26 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+.venv
+venv
+*.egg-info
+.env
+.env.*
+
+# Node / Frontend (backend-only image)
+frontend/
+node_modules
+
+# IDE
+.idea
+.vscode
+*.swp
+
+# Misc
+README.md
+*.md
+data/

@@ -51,6 +51,8 @@ class DebateRequest(BaseModel):
     image_base64: Optional[str] = Field(None, description="Base64 image - debate based on this")
     document_text: Optional[str] = Field(None, description="Document text - debate based on this")
     document_base64: Optional[str] = Field(None, description="Base64 PDF - text will be extracted")
+    num_rounds: Optional[int] = Field(2, ge=1, le=5, description="Debate rounds (1=opening only, 2=+1 rebuttal, etc.)")
+    num_judges: Optional[int] = Field(1, ge=1, le=3, description="Number of judges (1-3); verdicts are aggregated")
 
 
 class DebateResponse(BaseModel):
