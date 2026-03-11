@@ -1,10 +1,10 @@
 # DebateMind — AI Multi-Agent Debate System
 
 <p align="center">
-  <strong>Multi-agent AI debate where Pro and Con agents argue a topic in real time, and an impartial Judge delivers structured evaluations with detailed scoring.</strong>
+  <strong>Multi-agent AI debate where Pro and Con agents argue a topic in real time, and impartial Judge(s) deliver structured, unbiased evaluations with detailed scoring.</strong>
 </p>
 
-DebateMind is an intelligent debate simulation system that orchestrates four specialized AI agents—**Moderator**, **Pro**, **Con**, and **Judge**—to conduct structured debates on any topic. Users provide a debate topic (and optionally an image or document for context), and watch as agents present opening arguments, rebut one another, and receive a final verdict based on logical consistency, evidence strength, rebuttal effectiveness, and clarity.
+DebateMind is an intelligent debate simulation system that orchestrates four specialized AI agents—**Moderator**, **Pro**, **Con**, and **Judge**—to conduct structured debates on any topic. Users provide a debate topic (and optionally an image or document for context), choose the number of rounds and judges, and watch as agents present opening arguments, rebut one another with direct engagement, and receive a final verdict based on logical consistency, evidence strength, rebuttal effectiveness, and clarity.
 
 Inspired by the [Dr. Zero](https://arxiv.org/abs/2601.07055) paper and multi-agent dialectical reasoning systems.
 
@@ -12,121 +12,261 @@ Inspired by the [Dr. Zero](https://arxiv.org/abs/2601.07055) paper and multi-age
 
 ## Table of Contents
 
+- [Overview](#overview)
 - [Features](#features)
 - [Architecture](#architecture)
+- [Working Flow](#working-flow)
+- [LangGraph Debate Graph](#langgraph-debate-graph)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Usage](#usage)
 - [API Reference](#api-reference)
-- [Judge Scoring Rubric](#judge-scoring-rubric)
+- [Judge Scoring & Unbiased Evaluation](#judge-scoring--unbiased-evaluation)
 - [Context Support (Images & Documents)](#context-support-images--documents)
+- [Deployment](#deployment)
 - [Future Enhancements](#future-enhancements)
 - [License](#license)
 
 ---
 
+## Overview
+
+DebateMind simulates formal debates with:
+
+- **Configurable rounds** (1–5): Opening only, or opening + up to 4 rebuttal rounds
+- **Configurable judges** (1–3): Single judge or panel; individual scores shown separately; verdict aggregated (average scores, majority vote)
+- **Parallel execution**: Pro and Con openings run simultaneously; rebuttals run simultaneously (~30–40% faster)
+- **Real-time streaming**: Entries appear as they are generated
+- **Unbiased evaluation**: Strict anti-bias rules (no position, recency, or length bias)
+- **Engaging arguments**: Substantive openings, direct rebuttals that quote and refute opponent claims
+- **Multimodal context**: Debate based on images or PDF/TXT documents
+
+---
+
 ## Features
 
+### Major Features
+
 | Feature | Description |
-|--------|-------------|
-| **Multi-Agent Debate** | Four distinct agents: Moderator introduces the topic; Pro argues in favor; Con argues against; Judge evaluates and declares a winner. |
-| **Structured Debate Flow** | Configurable rounds: Opening arguments + rebuttals. Default: Opening + 1 rebuttal round (adjustable via `MAX_DEBATE_ROUNDS`). |
-| **Real-Time Streaming** | Debate entries stream to the frontend as they are generated (NDJSON over HTTP), so users see responses appear live. |
-| **Image Context** | Upload an image to provide visual context. A vision model (e.g., LLaVA, GPT-4o) describes the image, and agents base arguments on that description. |
-| **Document Context** | Upload a PDF or TXT file. Text is extracted (PDF via PyPDF) and injected into the debate topic; agents ground arguments in the document. |
-| **LLM Flexibility** | Works with OpenAI API or any OpenAI-compatible endpoint (e.g., Ollama, local models). Configure `OPENAI_API_BASE`, `LLM_MODEL`, and optionally `VISION_MODEL`. |
-| **LangGraph Orchestration** | Debate flow is defined as a LangGraph workflow for cleaner architecture and easier scaling. |
-| **Parallel Execution** | Pro + Con opening and rebuttals run in parallel (~30–40% faster debates). |
-| **CLI Mode** | Run debates from the terminal without the web UI via `python run_cli.py`. |
-| **Dark UI** | Modern Next.js frontend with dark theme, role avatars, and collapsible project info. |
+|---------|-------------|
+| **Multi-Agent Debate** | Four distinct agents: Moderator introduces the topic; Pro argues in favor; Con argues against; Judge(s) evaluate and declare a winner. |
+| **LangGraph Orchestration** | Debate flow defined as a `StateGraph` for clear structure, conditional routing (rebuttal loops), and scalability. |
+| **Parallel Execution** | Pro + Con opening and rebuttals run in parallel via `asyncio.gather` (~30–40% faster debates). |
+| **Multiple Judges (1–3)** | Optional panel of judges; each evaluates independently; verdict aggregates scores (average) and winner (majority vote); individual scores and reasoning shown separately in the UI. |
+| **Configurable Rounds** | 1 = opening only; 2 = opening + 1 rebuttal; 3 = opening + 2 rebuttals; up to 5 rounds. |
+| **Real-Time Streaming** | NDJSON stream over HTTP; frontend displays entries as they arrive. |
+| **Image Context** | Upload an image; vision model describes it; agents base arguments on the description. |
+| **Document Context** | Upload PDF or TXT; text extracted and injected into the topic. |
+| **Unbiased Judgment** | Judge prompt enforces strict anti-bias rules: no position, recency, or length bias; evaluate each side independently. |
+| **Engaging Arguments** | Pro/Con prompts encourage vivid language, concrete examples, and direct rebuttals that quote and refute opponent claims. |
+
+### Minor Features
+
+| Feature | Description |
+|---------|-------------|
+| **LLM Flexibility** | OpenAI API or any OpenAI-compatible endpoint (Ollama, local models). |
+| **CLI Mode** | `python run_cli.py` for terminal-only debates (text topic only). |
+| **Dark UI** | Next.js frontend with dark theme, role avatars, collapsible project info. |
+| **Structured Logging** | `debate started`, `agent response`, `judge verdict` for debugging. |
+| **Health Check** | `/health` endpoint for monitoring. |
+| **Docker** | Backend container for deployment. |
+| **CI/CD** | GitHub Actions for backend verification and frontend build. |
+| **CORS** | Backend allows all origins for frontend flexibility. |
 
 ---
 
 ## Architecture
 
-### High-Level Flow
+### System Architecture Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           User (Web UI / CLI)                                │
-└──────────────────────────────────────────┬──────────────────────────────────┘
-                                           │
-                                           ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    Next.js Frontend (React 19, Tailwind 4)                   │
-│  • Topic input, image/document upload                                        │
-│  • Streaming display of debate entries                                       │
-│  • Verdict visualization                                                     │
-└──────────────────────────────────────────┬──────────────────────────────────┘
-                                           │ HTTP POST /debate/stream
-                                           ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                      FastAPI Backend (backend/main.py)                       │
-│  • /debate         — Full debate (blocking)                                  │
-│  • /debate/stream  — Streaming debate (NDJSON)                               │
-│  • CORS, lifespan hooks                                                      │
-└──────────────────────────────────────────┬──────────────────────────────────┘
-                                           │
-                                           ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│              Context Utils (backend/context_utils.py)                        │
-│  • build_debate_context(): Merges topic + image description + doc text       │
-│  • describe_image(): Vision model describes image                            │
-│  • extract_text_from_pdf(): PyPDF extracts text from base64 PDF              │
-└──────────────────────────────────────────┬──────────────────────────────────┘
-                                           │
-                                           ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│            LangGraph Debate Engine (debate_engine/debate_graph.py)           │
-│  • Moderator → (Pro+Con opening in parallel) → (Pro+Con rebuttal in parallel)│
-│  • StateGraph with DebateState; nodes: moderator, openings, rebuttals, judge │
-│  • run_debate() / run_debate_stream()                                        │
-└──────────────────────────────────────────┬──────────────────────────────────┘
-                                           │
-           ┌───────────────────────────────┼───────────────────────────────┐
-           ▼                               ▼                               ▼
-┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
-│ Moderator Agent  │  │   Pro Agent      │  │   Con Agent      │  │   Judge Agent    │
-│ • introduce()    │  │ • opening_arg()  │  │ • opening_arg()  │  │ • evaluate()     │
-│                  │  │ • rebuttal()     │  │ • rebuttal()     │  │ • parse verdict  │
-└────────┬─────────┘  └────────┬─────────┘  └────────┬─────────┘  └────────┬─────────┘
-         │                     │                     │                     │
-         └─────────────────────┴─────────────────────┴─────────────────────┘
-                                           │
-                                           ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                     LLM Client (backend/llm_client.py)                       │
-│  • generate(): Text-only completion                                          │
-│  • generate_with_image(): Vision-capable completion (image_url)              │
-│  • AsyncOpenAI client (OpenAI API / Ollama-compatible)                       │
-└──────────────────────────────────────────┬──────────────────────────────────┘
-                                           │
-                                           ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│            OpenAI API / Ollama / Other OpenAI-Compatible Endpoints           │
-└─────────────────────────────────────────────────────────────────────────────┘
+                                    ┌─────────────────────────────────────────────────────────────┐
+                                    │                         USER                                 │
+                                    │  (Web UI or CLI)                                            │
+                                    └──────────────────────────────────┬──────────────────────────┘
+                                                                       │
+                    ┌──────────────────────────────────────────────────┼──────────────────────────────────────────────────┐
+                    │                                                  │                                                  │
+                    ▼                                                  ▼                                                  │
+    ┌───────────────────────────┐                      ┌───────────────────────────────────┐                             │
+    │   Next.js Frontend        │                      │   CLI (run_cli.py)                │                             │
+    │   • Topic, rounds, judges │                      │   • Text topic only               │                             │
+    │   • Image/document upload │                      │   • Prints transcript + verdict   │                             │
+    │   • Streaming display     │                      └───────────────────────────────────┘                             │
+    │   • Individual judge UI   │                                                                                        │
+    └───────────────┬───────────┘                                                                                        │
+                    │ HTTP POST /debate/stream                                                                           │
+                    │ Body: { topic, num_rounds, num_judges, image_base64?, document_text?, document_base64? }           │
+                    ▼                                                                                                    │
+    ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+    │                                    FastAPI Backend (backend/main.py)                                                │
+    │   Endpoints: /  |  /debate  |  /debate/stream  |  /health  |  /docs                                                 │
+    │   CORS, lifespan, structured logging                                                                               │
+    └───────────────────────────────────────────────────────────────────┬───────────────────────────────────────────────┘
+                                                                        │
+                                                                        ▼
+    ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+    │                              Context Utils (backend/context_utils.py)                                               │
+    │   build_debate_context()  →  Merges topic + image description + document text                                      │
+    │   describe_image()        →  Vision model (LLaVA/GPT-4o) describes image                                           │
+    │   extract_text_from_pdf() →  PyPDF extracts text from base64 PDF                                                   │
+    └───────────────────────────────────────────────────────────────────┬───────────────────────────────────────────────┘
+                                                                        │ topic_with_context
+                                                                        ▼
+    ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+    │                    LangGraph Debate Engine (debate_engine/debate_graph.py)                                          │
+    │   StateGraph(DebateState)  |  Nodes: moderator, openings, rebuttals, judge                                         │
+    │   Conditional edge: rebuttals → (rebuttals | judge) based on max_rounds                                            │
+    │   run_debate() / run_debate_stream()                                                                               │
+    └───────────────────────────────────────────────────────────────────┬───────────────────────────────────────────────┘
+                                                                        │
+        ┌───────────────────────┬───────────────────────┬───────────────────────┬───────────────────────┐
+        ▼                       ▼                       ▼                       ▼                       │
+    ┌─────────────┐   ┌─────────────────┐   ┌─────────────────┐   ┌─────────────────┐                   │
+    │ Moderator   │   │ Pro Agent       │   │ Con Agent       │   │ Judge Agent     │                   │
+    │ introduce() │   │ opening_arg()   │   │ opening_arg()   │   │ evaluate()      │                   │
+    │             │   │ rebuttal()      │   │ rebuttal()      │   │ (1–3× parallel) │                   │
+    └─────────────┘   └────────┬────────┘   └────────┬────────┘   └─────────────────┘                   │
+                               │                     │                                                      │
+                               └──────────┬──────────┘  (openings + rebuttals run Pro & Con in parallel)  │
+                                          │                                                                 │
+                                          ▼                                                                 │
+    ┌─────────────────────────────────────────────────────────────────────────────────────────────────────┐
+    │                         LLM Client (backend/llm_client.py)                                            │
+    │   generate()             →  Text-only completion                                                      │
+    │   generate_with_image()  →  Vision completion (image_url)                                             │
+    │   AsyncOpenAI (OpenAI API / Ollama-compatible)                                                        │
+    └───────────────────────────────────────────────────────────────────┬─────────────────────────────────┘
+                                                                        │
+                                                                        ▼
+    ┌─────────────────────────────────────────────────────────────────────────────────────────────────────┐
+    │                    OpenAI API / Ollama / OpenAI-Compatible Endpoint                                   │
+    └─────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Agent Roles
+---
 
-| Agent | Role | Behavior |
-|-------|------|----------|
-| **Moderator** | Introduces the debate | Presents the topic neutrally in 2–3 sentences. Does not take a stance. |
-| **Pro** | Argues in favor | Delivers opening argument, then rebuttals. Addresses Con’s points directly. |
-| **Con** | Argues against | Delivers opening argument, then rebuttals. Addresses Pro’s points directly. |
-| **Judge** | Evaluates and declares winner | Uses a 4-metric rubric (logic, evidence, rebuttal, clarity), assigns 1–10 per metric, declares PRO or CON winner with reasoning. |
+## Working Flow
 
-### Debate Flow (Step-by-Step)
+### End-to-End Flow (Step-by-Step)
 
-1. **User** submits topic (optional: image, document).
-2. **Context Utils** build `topic_with_context` (topic + image description + document text).
-3. **Moderator** introduces the topic.
-4. **Pro + Con** deliver opening arguments **in parallel** (based on topic + context).
-5. **Rebuttal rounds** (1 to `MAX_DEBATE_ROUNDS - 1`): Pro and Con rebut **in parallel**.
-6. **Judge** evaluates transcript, outputs scores and winner.
-7. **Frontend** displays transcript and verdict (streamed or full response).
+```
+  User                    Frontend                 Backend                    Debate Engine                    Agents
+    │                         │                        │                            │                              │
+    │  1. Enter topic         │                        │                            │                              │
+    │  2. Set rounds (1-5)    │                        │                            │                              │
+    │  3. Set judges (1-3)    │                        │                            │                              │
+    │  4. (Optional) Upload   │                        │                            │                              │
+    │     image / document    │                        │                            │                              │
+    │  5. Click Start debate  │                        │                            │                              │
+    │ ──────────────────────► │                        │                            │                              │
+    │                         │  POST /debate/stream   │                            │                              │
+    │                         │  { topic, num_rounds,  │                            │                              │
+    │                         │    num_judges, ... }   │                            │                              │
+    │                         │ ─────────────────────► │                            │                              │
+    │                         │                        │  build_debate_context()    │                              │
+    │                         │                        │  (image → vision, PDF →    │                              │
+    │                         │                        │   text extraction)         │                              │
+    │                         │                        │ ─────────────────────────► │                              │
+    │                         │                        │                            │  moderator_node()            │
+    │                         │                        │                            │ ────────────────────────────► Moderator
+    │                         │                        │  { type: "entry", entry }  │ ◄──────────────────────────── introduce()
+    │                         │ ◄───────────────────────────────────────────────────│                              │
+    │                         │  (stream)              │                            │  openings_node()             │
+    │                         │                        │                            │ ────────┬────────────────────► Pro (opening)
+    │                         │                        │                            │         └────────────────────► Con (opening)
+    │                         │                        │                            │  (parallel)                   │
+    │                         │  { entry }, { entry }  │                            │ ◄──────────────────────────── │
+    │                         │ ◄──────────────────────│                            │  rebuttals_node() (loop)      │
+    │                         │                        │                            │ ────────┬────────────────────► Pro (rebuttal)
+    │                         │                        │                            │         └────────────────────► Con (rebuttal)
+    │                         │  { entry }, { entry }  │                            │  (parallel)                   │
+    │                         │ ◄──────────────────────│                            │  judge_node()                 │
+    │                         │                        │                            │ ─────────────────────────────► Judge × N
+    │                         │                        │                            │  (N = num_judges, parallel)   │
+    │                         │  { verdict }           │                            │ ◄──────────────────────────── │
+    │                         │  { type: "done" }      │                            │                              │
+    │                         │ ◄──────────────────────│                            │                              │
+    │  Display transcript +   │                        │                            │                              │
+    │  individual judges +    │                        │                            │                              │
+    │  final verdict          │                        │                            │                              │
+    │ ◄────────────────────── │                        │                            │                              │
+```
+
+### Request → Response Data Flow
+
+```
+DebateRequest                    DebateState (LangGraph)                    Streamed Output
+────────────────                 ───────────────────────                   ────────────────
+topic          ───────────────►  topic
+num_rounds     ───────────────►  max_rounds
+num_judges     ───────────────►  num_judges                ──────────────►  {"type":"entry","entry":{...}}
+image_base64   ──► context_utils
+document_*     ──► build_debate_context()
+                      │
+                      ▼ topic_with_context
+                transcript[]     (accumulated via reducer)
+                round            (1, 2, 3, ...)
+                verdict          (aggregated)
+                judge_verdicts[] (when num_judges > 1)     ──────────────►  {"type":"verdict","verdict":{...}}
+                                                                           {"type":"done"}
+```
+
+---
+
+## LangGraph Debate Graph
+
+### Graph Structure
+
+```
+                    ┌─────────────┐
+                    │   START     │
+                    └──────┬──────┘
+                           │
+                           ▼
+                    ┌─────────────┐
+                    │  moderator  │  ← Introduces topic
+                    └──────┬──────┘
+                           │
+                           ▼
+                    ┌─────────────┐
+                    │  openings   │  ← Pro + Con in PARALLEL
+                    └──────┬──────┘
+                           │
+                           ▼
+                    ┌─────────────┐
+                    │  rebuttals  │  ← Pro + Con in PARALLEL
+                    └──────┬──────┘
+                           │
+                           │  should_rebuttal(state)
+                           ├──────────────────┐
+                           │ round < max_rounds
+                           │                  │ round >= max_rounds
+                           ▼                  ▼
+                    ┌─────────────┐    ┌─────────────┐
+                    │  rebuttals  │    │    judge    │  ← Judge × N in PARALLEL
+                    └──────┬──────┘    └──────┬──────┘
+                           │                  │
+                           └────────┬─────────┘
+                                    │
+                                    ▼
+                             ┌─────────────┐
+                             │     END     │
+                             └─────────────┘
+```
+
+### State Schema (`DebateState`)
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `topic` | str | Debate topic (with context merged) |
+| `transcript` | list | Debate entries (reducer: append) |
+| `round` | int | Current round (1 after opening, 2+ after rebuttals) |
+| `max_rounds` | int | From request (e.g. 2 = opening + 1 rebuttal) |
+| `num_judges` | int | From request (1–3) |
+| `verdict` | dict | Final aggregated verdict |
 
 ---
 
@@ -136,7 +276,8 @@ Inspired by the [Dr. Zero](https://arxiv.org/abs/2601.07055) paper and multi-age
 |-------|--------------|
 | **Frontend** | Next.js 16, React 19, TypeScript, Tailwind CSS 4 |
 | **Backend** | FastAPI, Uvicorn, Pydantic v2 |
-| **AI / LLM** | OpenAI Python SDK (OpenAI API or Ollama-compatible endpoints) |
+| **Orchestration** | LangGraph (StateGraph, conditional edges) |
+| **AI / LLM** | OpenAI Python SDK (OpenAI API or Ollama-compatible) |
 | **Document Processing** | PyPDF for PDF text extraction |
 | **Data Models** | Pydantic schemas (`models/schemas.py`) |
 
@@ -147,27 +288,28 @@ Inspired by the [Dr. Zero](https://arxiv.org/abs/2601.07055) paper and multi-age
 ```
 DebateMind/
 ├── backend/
-│   ├── main.py           # FastAPI app: /debate, /debate/stream, /health
-│   ├── config.py         # Settings (LLM_MODEL, VISION_MODEL, MAX_DEBATE_ROUNDS, etc.)
-│   ├── llm_client.py     # OpenAI client, generate(), generate_with_image()
-│   └── context_utils.py  # Image description, PDF extraction, build_debate_context()
+│   ├── main.py           # FastAPI app: /debate, /debate/stream, /health, /docs
+│   ├── config.py         # Settings (LLM, VISION_MODEL, MAX_DEBATE_ROUNDS)
+│   ├── llm_client.py     # generate(), generate_with_image()
+│   └── context_utils.py  # build_debate_context(), describe_image(), extract_text_from_pdf()
+│
 ├── debate_engine/
-│   ├── debate_graph.py   # LangGraph workflow (parallel Pro+Con)
+│   ├── debate_graph.py   # LangGraph workflow (primary)
 │   └── manager.py        # Legacy sequential manager (deprecated)
+│
 ├── agents/
 │   ├── base.py           # format_history(), call_llm()
 │   ├── moderator.py      # ModeratorAgent.introduce()
 │   ├── pro_agent.py      # ProAgent.opening_argument(), rebuttal()
 │   ├── con_agent.py      # ConAgent.opening_argument(), rebuttal()
 │   └── judge_agent.py    # JudgeAgent.evaluate(), verdict parsing
-├── debate_engine/
-│   ├── debate_graph.py   # LangGraph workflow (primary)
-│   └── manager.py        # Legacy manager (deprecated)
+│
 ├── models/
-│   └── schemas.py        # DebateRequest, DebateResponse, DebateEntry, JudgeVerdict, Speaker, JudgeScores
+│   └── schemas.py        # DebateRequest, DebateResponse, DebateEntry, JudgeVerdict, JudgeScores, Speaker
+│
 ├── frontend/
 │   ├── src/app/
-│   │   ├── page.tsx      # Main UI: topic input, image/doc upload, streaming transcript, verdict
+│   │   ├── page.tsx      # Main UI: topic, rounds, judges, image/doc upload, streaming, verdict
 │   │   ├── layout.tsx    # Root layout, fonts, metadata
 │   │   └── globals.css   # Tailwind, custom styles
 │   ├── public/
@@ -176,11 +318,11 @@ DebateMind/
 │   │   ├── con-agent.svg
 │   │   └── judge.svg
 │   └── package.json
-├── data/                 # Reserved for future use (transcripts, RAG)
-├── run_cli.py            # CLI entrypoint (no frontend)
+│
+├── run_cli.py            # CLI entrypoint (text topic only)
 ├── Dockerfile            # Backend container
 ├── render.yaml           # Render.com deployment
-├── .github/workflows/deploy.yml  # CI/CD (backend + frontend + deploy hook)
+├── .github/workflows/deploy.yml
 ├── requirements.txt
 ├── .env.example
 ├── .gitignore
@@ -200,33 +342,31 @@ DebateMind/
 ### Backend
 
 ```bash
-# From project root
 pip install -r requirements.txt
 ```
 
 ### Frontend
 
 ```bash
-cd frontend
-npm install
+cd frontend && npm install
 ```
 
 ---
 
 ## Configuration
 
-Create a `.env` file in the project root (copy from `.env.example`):
+Create a `.env` file in the project root:
 
 ```env
-# For OpenAI API
+# OpenAI API
 OPENAI_API_KEY=sk-...
 OPENAI_API_BASE=https://api.openai.com/v1
 LLM_MODEL=gpt-4o-mini
 
-# For image context (vision model)
+# Image context (vision model)
 VISION_MODEL=gpt-4o
 
-# For Ollama (local)
+# Ollama (local)
 # OPENAI_API_KEY=ollama
 # OPENAI_API_BASE=http://localhost:11434/v1
 # LLM_MODEL=llama3
@@ -235,15 +375,13 @@ VISION_MODEL=gpt-4o
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `OPENAI_API_KEY` | API key (use `ollama` for local Ollama) | `""` |
-| `OPENAI_API_BASE` | Base URL for OpenAI-compatible API | `http://localhost:11434/v1` |
-| `LLM_MODEL` | Model for text generation | `llama3` |
-| `VISION_MODEL` | Model for image description (when using image context) | `llava` |
-| `MAX_DEBATE_ROUNDS` | 1 = opening only; 2 = opening + 1 rebuttal; 3 = opening + 2 rebuttals | `2` |
-| `MAX_ARGUMENT_TOKENS` | Max tokens per argument (reserved for future use) | `200` |
+| `OPENAI_API_KEY` | API key (use `ollama` for local) | `""` |
+| `OPENAI_API_BASE` | Base URL | `http://localhost:11434/v1` |
+| `LLM_MODEL` | Text model | `llama3` |
+| `VISION_MODEL` | Image model | `llava` |
+| `MAX_DEBATE_ROUNDS` | Default rounds if not in request | `2` |
 
-**Frontend API URL**  
-Set `NEXT_PUBLIC_API_URL` in `frontend/.env.local` if the backend is not at `http://localhost:8000`.
+Frontend: Set `NEXT_PUBLIC_API_URL` in `frontend/.env.local` if backend is not at `http://localhost:8000`.
 
 ---
 
@@ -262,15 +400,11 @@ cd frontend && npm run dev
 - **API:** http://localhost:8000  
 - **Frontend:** http://localhost:3000  
 
-Enter a topic, optionally add an image or document, and click **Start debate**. Entries stream in real time; the verdict appears at the end.
-
-### CLI (no frontend)
+### CLI
 
 ```bash
 python run_cli.py
 ```
-
-Prompts for a topic, runs the full debate, and prints the transcript and verdict to the terminal. Does not support image/document context (text topic only).
 
 ---
 
@@ -278,99 +412,108 @@ Prompts for a topic, runs the full debate, and prints the transcript and verdict
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/` | GET | API info and configured `llm_model` |
-| `/health` | GET | Health check; returns `status`, `model`, `url` |
-| `/debate` | POST | Run full debate (blocking). Body: `DebateRequest`. Returns `DebateResponse`. |
-| `/debate/stream` | POST | Stream debate entries. Body: `DebateRequest`. Returns NDJSON stream. |
+| `/` | GET | API info, `llm_model`, `version` |
+| `/health` | GET | `status`, `model`, `url` |
+| `/debate` | POST | Full debate (blocking) |
+| `/debate/stream` | POST | Streaming debate (NDJSON) |
 | `/docs` | GET | Swagger UI |
 
-### `DebateRequest` (POST body)
+### `DebateRequest`
 
 ```json
 {
   "topic": "Should AI replace human teachers?",
   "image_base64": null,
   "document_text": null,
-  "document_base64": null
+  "document_base64": null,
+  "num_rounds": 2,
+  "num_judges": 1
 }
 ```
 
-- `topic` (required): Debate topic (min 5 characters).
-- `image_base64`: Base64-encoded image (optional). Vision model describes it; context is added to topic.
-- `document_text`: Plain text content (optional). Injected into topic.
-- `document_base64`: Base64-encoded PDF (optional). Text is extracted and injected into topic.
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `topic` | string | Yes | Min 5 chars |
+| `image_base64` | string | No | Base64 image for vision context |
+| `document_text` | string | No | Plain text context |
+| `document_base64` | string | No | Base64 PDF (text extracted) |
+| `num_rounds` | int | No | 1–5, default 2 |
+| `num_judges` | int | No | 1–3, default 1 |
 
 ### Streamed Response (NDJSON)
 
-Each line is a JSON object:
+| Type | Payload |
+|------|---------|
+| `entry` | `{ speaker, text, round_number }` |
+| `verdict` | `{ winner, pro_scores, con_scores, reasoning, judge_verdicts? }` |
+| `done` | — |
+| `error` | `{ message }` |
 
-- `{"type": "entry", "entry": {...}}` — Debate entry (speaker, text, round_number)
-- `{"type": "verdict", "verdict": {...}}` — Final verdict (winner, pro_scores, con_scores, reasoning)
-- `{"type": "done"}` — Stream complete
-- `{"type": "error", "message": "..."}` — Error message
+When `num_judges` > 1, `verdict.judge_verdicts` contains each judge's scores and reasoning.
 
 ---
 
-## Judge Scoring Rubric
+## Judge Scoring & Unbiased Evaluation
 
-The Judge evaluates each side on four metrics (1–10). Total = sum of the four scores.
+### Rubric (1–10 per metric)
 
 | Metric | Description |
 |--------|-------------|
-| **Logical Consistency** | Does the argument follow logically from premises? Are there contradictions or fallacies? |
-| **Evidence Strength** | Are cited facts credible, relevant, and well-integrated into the argument? |
-| **Rebuttal Effectiveness** | How well did each side address the opponent’s counterpoints? |
-| **Clarity** | Is the argument professional, clear, and persuasive? |
+| **Logical Consistency** | Argument follows logically; no fallacies or contradictions |
+| **Evidence Strength** | Facts credible, relevant, well-integrated; quality over quantity |
+| **Rebuttal Effectiveness** | Direct engagement with opponent claims; weakening of counterarguments |
+| **Clarity** | Clear, professional, persuasive delivery |
 
-The Judge outputs:
+Total = sum of four scores (max 40 per side).
 
-- `PRO_SCORES`: logic, evidence, rebuttal, clarity
-- `CON_SCORES`: logic, evidence, rebuttal, clarity
-- `WINNER`: PRO or CON
-- `REASONING`: Short explanation of the decision
+### Anti-Bias Rules
+
+The judge prompt enforces:
+
+- **No position bias** — Pro first / Con second must not affect scores
+- **No recency bias** — Last speaker gets no advantage
+- **No length bias** — Substance over word count
+- **Independent evaluation** — Score each side on its own before comparing
+
+When multiple judges are used: scores are averaged; winner by majority vote; tie broken by higher total score.
 
 ---
 
 ## Context Support (Images & Documents)
 
-### Image Context
+### Image
 
-1. User uploads an image in the UI.
-2. Image is sent as base64 in `image_base64`.
-3. `build_debate_context()` calls `describe_image()`.
-4. Vision model (e.g., LLaVA, GPT-4o) returns a description.
-5. Description is appended to the topic; all agents see it.
+1. User uploads image → base64
+2. `describe_image()` calls vision model (LLaVA/GPT-4o)
+3. Description appended to topic; all agents see it
 
-**Requirements:** `VISION_MODEL` set and endpoint supports vision (e.g., `ollama run llava`).
+### Document (PDF/TXT)
 
-### Document Context
+- **TXT:** Sent as `document_text`; used as-is
+- **PDF:** Sent as `document_base64`; PyPDF extracts text; injected into topic
 
-- **TXT:** Sent in `document_text`; used as-is (limited length).
-- **PDF:** Sent in `document_base64`; text is extracted with PyPDF, then injected into the topic.
-
-Document text is capped at ~6000 characters to stay within context limits.
+Document text capped at ~6000 chars.
 
 ---
 
 ## Deployment
 
-| Platform | Purpose | Config |
-|----------|---------|--------|
-| **Vercel** | Frontend | `frontend/vercel.json` — set `NEXT_PUBLIC_API_URL` to your backend URL |
-| **Render** | Backend API | `render.yaml` — start command: `uvicorn backend.main:app --host 0.0.0.0 --port 10000` |
-| **Docker** | Backend container | `Dockerfile` — `docker build -t debate-mind . && docker run -p 10000:10000 -e OPENAI_API_KEY=... debate-mind` |
+| Platform | Config |
+|----------|--------|
+| **Vercel** | `frontend/vercel.json`; set `NEXT_PUBLIC_API_URL` |
+| **Render** | `render.yaml`; `uvicorn backend.main:app --host 0.0.0.0 --port 10000` |
+| **Docker** | `docker build -t debate-mind .`; set `OPENAI_API_KEY` |
 
-**CI/CD:** GitHub Actions (`.github/workflows/deploy.yml`) runs on push/PR: verifies backend imports, builds frontend. Optionally trigger Render deploy by adding `RENDER_DEPLOY_HOOK` as a repo secret.
+**CI/CD:** `.github/workflows/deploy.yml` — backend import check, frontend build; optional `RENDER_DEPLOY_HOOK` for auto-deploy.
 
 ---
 
 ## Future Enhancements
 
-- **Evidence Retrieval (RAG):** ChromaDB/FAISS for retrieving relevant passages to support arguments.
-- **Agent Personas:** Specialized roles (e.g., Economist, Philosopher, Scientist) with distinct styles.
-- **Self-Reflection:** Agents critique their own arguments before posting.
-- **Multi-Agent Debate:** 4–6 agents with varied roles and perspectives.
-- **Persistent Transcripts:** Store debate history in `data/` for analysis and replay.
+- **RAG:** ChromaDB/FAISS for evidence retrieval
+- **Agent Personas:** Economist, Philosopher, Scientist
+- **Self-Reflection:** Agents critique before posting
+- **Persistent Transcripts:** Store in `data/` for replay
 
 ---
 
