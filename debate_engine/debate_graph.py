@@ -35,6 +35,7 @@ class DebateState(TypedDict, total=False):
     transcript: Annotated[list, append_transcript]
     round: int
     verdict: Optional[dict]
+    judge_verdicts: Optional[list]
     max_rounds: int
     num_judges: int
 
@@ -116,9 +117,12 @@ async def judge_node(state: DebateState) -> dict:
     summary = _format_verdict_summary(verdict)
     entry = DebateEntry(speaker=Speaker.JUDGE, text=summary, round_number=state.get("round", 2) + 1)
     logger.info("judge verdict", extra={"winner": verdict.winner.value, "num_judges": num_judges})
+    judge_verdicts_data = [v.model_dump() for v in verdicts]
+    verdict_data = verdict.model_dump()
+    verdict_data["judge_verdicts"] = judge_verdicts_data
     return {
         "transcript": [entry.model_dump()],
-        "verdict": verdict.model_dump(),
+        "verdict": verdict_data,
     }
 
 
@@ -150,16 +154,15 @@ def _aggregate_verdicts(verdicts: list[JudgeVerdict]) -> JudgeVerdict:
     if pro_wins == n // 2 and n % 2 == 0:
         winner = Speaker.PRO if pro_avg.total >= con_avg.total else Speaker.CON
 
-    reasoning_parts = [f"Judge {i+1}: {v.reasoning}" for i, v in enumerate(verdicts)]
-    reasoning = " | ".join(reasoning_parts)
-    if len(reasoning) > 1000:
-        reasoning = reasoning[:997] + "..."
+    consensus = f"Based on {n} judges: {pro_wins} voted PRO, {n - pro_wins} voted CON. "
+    consensus += f"Averaged scores — Pro: {pro_avg.total} pts, Con: {con_avg.total} pts. "
+    consensus += f"Final winner: {winner.value.upper()}."
 
     return JudgeVerdict(
         winner=winner,
         pro_scores=pro_avg,
         con_scores=con_avg,
-        reasoning=reasoning,
+        reasoning=consensus,
     )
 
 

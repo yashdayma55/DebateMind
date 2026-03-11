@@ -21,6 +21,7 @@ interface JudgeVerdict {
   pro_scores: JudgeScores;
   con_scores: JudgeScores;
   reasoning: string;
+  judge_verdicts?: JudgeVerdict[];
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -415,7 +416,46 @@ export default function Home() {
               })}
             </div>
 
-            {/* Verdict */}
+            {/* Individual judge evaluations */}
+            {verdict?.judge_verdicts && verdict.judge_verdicts.length > 1 && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold text-slate-200">
+                  Individual judge evaluations
+                </h3>
+                {verdict.judge_verdicts.map((jv, idx) => {
+                  const proTotal = jv.pro_scores.total ?? (jv.pro_scores.logical_consistency + jv.pro_scores.evidence_strength + jv.pro_scores.rebuttal_effectiveness + jv.pro_scores.clarity);
+                  const conTotal = jv.con_scores.total ?? (jv.con_scores.logical_consistency + jv.con_scores.evidence_strength + jv.con_scores.rebuttal_effectiveness + jv.con_scores.clarity);
+                  return (
+                    <div key={idx} className="rounded-2xl border border-violet-500/20 bg-slate-900/50 p-6 animate-fade-in">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center text-lg ring-2 ring-violet-500/30">
+                          ⚖
+                        </div>
+                        <span className="text-violet-300 font-semibold">Judge {idx + 1}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                          <span className="text-emerald-400 font-medium">Pro</span>
+                          <span className="ml-2 font-mono text-slate-200">{proTotal} pts</span>
+                          <p className="text-xs text-slate-500 mt-1">Logic {jv.pro_scores.logical_consistency} · Evidence {jv.pro_scores.evidence_strength} · Rebuttal {jv.pro_scores.rebuttal_effectiveness} · Clarity {jv.pro_scores.clarity}</p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20">
+                          <span className="text-rose-400 font-medium">Con</span>
+                          <span className="ml-2 font-mono text-slate-200">{conTotal} pts</span>
+                          <p className="text-xs text-slate-500 mt-1">Logic {jv.con_scores.logical_consistency} · Evidence {jv.con_scores.evidence_strength} · Rebuttal {jv.con_scores.rebuttal_effectiveness} · Clarity {jv.con_scores.clarity}</p>
+                        </div>
+                      </div>
+                      <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 mb-3">
+                        <span className="text-amber-400 font-bold">Winner: {jv.winner.toUpperCase()}</span>
+                      </div>
+                      <p className="text-slate-400 text-sm leading-relaxed">{jv.reasoning}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Single judge or final verdict */}
             {verdict && (
               <div className="rounded-2xl border-2 border-violet-500/30 bg-gradient-to-br from-violet-950/30 to-slate-900/50 p-8 shadow-2xl animate-fade-in">
                 <div className="flex items-center gap-4 mb-6">
@@ -424,9 +464,11 @@ export default function Home() {
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-violet-300">
-                      Verdict
+                      {verdict.judge_verdicts && verdict.judge_verdicts.length > 1 ? "Final verdict" : "Verdict"}
                     </h3>
-                    <p className="text-slate-500 text-sm">Final evaluation</p>
+                    <p className="text-slate-500 text-sm">
+                      {verdict.judge_verdicts && verdict.judge_verdicts.length > 1 ? "Aggregated from all judges" : "Final evaluation"}
+                    </p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-6 mb-6">
