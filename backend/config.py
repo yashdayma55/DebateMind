@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     OPENAI_API_BASE: str = "http://localhost:11434/v1"  # Ollama default
     LLM_MODEL: str = "llama3"  # Use "gpt-4o-mini" with OpenAI API
+    VISION_MODEL: str = "llava"  # For image context (Ollama: ollama run llava)
     
     # Debate settings (1 = opening only, 2 = +1 rebuttal, 3 = +2 rebuttals)
     MAX_DEBATE_ROUNDS: int = 2  # Opening + 1 rebuttal round

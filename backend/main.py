@@ -55,11 +55,18 @@ async def run_debate(request: DebateRequest):
 
 @app.post("/debate/stream")
 async def run_debate_stream(request: DebateRequest):
-    """Stream debate entries as they're generated. Returns newline-delimited JSON."""
+    """Stream debate entries. Accepts optional image_base64, document_text, or document_base64."""
     async def generate():
         try:
+            from backend.context_utils import build_debate_context
+            topic_with_context, _ = await build_debate_context(
+                topic=request.topic,
+                image_base64=request.image_base64,
+                document_text=request.document_text,
+                document_base64=request.document_base64,
+            )
             manager = DebateManager()
-            async for chunk in manager.run_debate_stream(request.topic):
+            async for chunk in manager.run_debate_stream(topic_with_context):
                 yield chunk
         except Exception as e:
             yield json.dumps({"type": "error", "message": str(e)}) + "\n"

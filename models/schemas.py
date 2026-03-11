@@ -48,6 +48,9 @@ class JudgeVerdict(BaseModel):
 class DebateRequest(BaseModel):
     """Request to start a new debate."""
     topic: str = Field(..., min_length=5, description="The debate topic")
+    image_base64: Optional[str] = Field(None, description="Base64 image - debate based on this")
+    document_text: Optional[str] = Field(None, description="Document text - debate based on this")
+    document_base64: Optional[str] = Field(None, description="Base64 PDF - text will be extracted")
 
 
 class DebateResponse(BaseModel):

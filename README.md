@@ -57,6 +57,8 @@ OPENAI_API_KEY=sk-...
 LLM_MODEL=gpt-4o-mini
 ```
 
+**Image/Document context:** For debates based on images, use a vision model (`llava` for Ollama, or `gpt-4o` for OpenAI). Set `VISION_MODEL=llava` in `.env` and run `ollama run llava`.
+
 ### 3. Run
 
 ```bash

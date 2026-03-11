@@ -31,17 +31,78 @@ export default function Home() {
   const [transcript, setTranscript] = useState<DebateEntry[]>([]);
   const [verdict, setVerdict] = useState<JudgeVerdict | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showInfo, setShowInfo] = useState(true);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [documentText, setDocumentText] = useState<string | null>(null);
+  const [documentBase64, setDocumentBase64] = useState<string | null>(null);
+  const [documentName, setDocumentName] = useState<string | null>(null);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      const base64 = result.includes(",") ? result.split(",")[1] : result;
+      setImageBase64(base64);
+      setImagePreview(result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDocumentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setDocumentName(file.name);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string | ArrayBuffer;
+      if (typeof result === "string") {
+        setDocumentText(result);
+        setDocumentBase64(null);
+      } else {
+        const bytes = new Uint8Array(result);
+        let binary = "";
+        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+        setDocumentBase64(btoa(binary));
+        setDocumentText(null);
+      }
+    };
+    if (file.name.endsWith(".pdf")) {
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.readAsText(file);
+    }
+  };
+
+  const clearImage = () => {
+    setImageBase64(null);
+    setImagePreview(null);
+  };
+
+  const clearDocument = () => {
+    setDocumentText(null);
+    setDocumentBase64(null);
+    setDocumentName(null);
+  };
 
   const runDebate = async () => {
     setLoading(true);
     setError(null);
     setTranscript([]);
     setVerdict(null);
+    setShowInfo(false);
     try {
+      const body: Record<string, string> = { topic };
+      if (imageBase64) body.image_base64 = imageBase64;
+      if (documentText) body.document_text = documentText;
+      if (documentBase64) body.document_base64 = documentBase64;
+
       const res = await fetch(`${API_URL}/debate/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error(await res.text());
       const reader = res.body?.getReader();
@@ -66,7 +127,7 @@ export default function Home() {
               setError(data.message);
             }
           } catch {
-            // Skip invalid JSON lines
+            // Skip invalid JSON
           }
         }
       }
@@ -79,33 +140,37 @@ export default function Home() {
 
   const speakerConfig: Record<
     string,
-    { label: string; bg: string; border: string; icon: string; img?: string }
+    { label: string; bg: string; border: string; accent: string; icon: string; img?: string }
   > = {
     moderator: {
       label: "Moderator",
-      bg: "bg-amber-50 dark:bg-amber-950/30",
-      border: "border-amber-500",
+      bg: "from-amber-500/10 to-amber-600/5",
+      border: "border-amber-500/50",
+      accent: "text-amber-400",
       icon: "📋",
       img: "/moderator.svg",
     },
     pro: {
       label: "Pro Agent",
-      bg: "bg-emerald-50 dark:bg-emerald-950/30",
-      border: "border-emerald-600",
+      bg: "from-emerald-500/10 to-emerald-600/5",
+      border: "border-emerald-500/50",
+      accent: "text-emerald-400",
       icon: "✓",
       img: "/pro-agent.svg",
     },
     con: {
       label: "Con Agent",
-      bg: "bg-rose-50 dark:bg-rose-950/30",
-      border: "border-rose-600",
+      bg: "from-rose-500/10 to-rose-600/5",
+      border: "border-rose-500/50",
+      accent: "text-rose-400",
       icon: "✗",
       img: "/con-agent.svg",
     },
     judge: {
       label: "Judge",
-      bg: "bg-violet-50 dark:bg-violet-950/30",
-      border: "border-violet-600",
+      bg: "from-violet-500/10 to-violet-600/5",
+      border: "border-violet-500/50",
+      accent: "text-violet-400",
       icon: "⚖",
       img: "/judge.svg",
     },
@@ -114,72 +179,178 @@ export default function Home() {
   const hasContent = transcript.length > 0 || verdict;
 
   return (
-    <div className="min-h-screen bg-stone-100 dark:bg-stone-950 font-[family-name:var(--font-geist-sans)]">
-      <header className="border-b border-stone-200 dark:border-stone-800 bg-white/80 dark:bg-stone-900/80 backdrop-blur">
-        <div className="max-w-4xl mx-auto px-6 py-6">
-          <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-50">
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+      {/* Hero */}
+      <header className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-950 to-amber-950/20" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(245,158,11,0.15),transparent)]" />
+        <div className="relative max-w-5xl mx-auto px-6 py-16">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-amber-200 via-amber-100 to-amber-200 bg-clip-text text-transparent">
             DebateMind
           </h1>
-          <p className="text-stone-600 dark:text-stone-400 mt-1 text-sm">
-            AI agents debate. A judge decides. Watch it unfold in real time.
+          <p className="mt-3 text-lg text-slate-400 max-w-2xl">
+            Multi-agent AI debate system. Watch Pro and Con agents argue in real time, with an AI Judge delivering structured evaluations.
           </p>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-6 py-10">
-        <div className="space-y-4 mb-10">
-          <label className="block text-sm font-medium text-stone-700 dark:text-stone-300">
-            Debate topic
-          </label>
-          <input
-            type="text"
-            value={topic}
-            onChange={(e) => setTopic(e.target.value)}
-            placeholder="e.g. Should AI replace human teachers?"
-            className="w-full rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 px-4 py-3 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
-            disabled={loading}
-          />
-          <button
-            onClick={runDebate}
-            disabled={loading || !topic.trim()}
-            className="rounded-lg bg-amber-600 hover:bg-amber-700 disabled:bg-stone-400 px-6 py-3 font-medium text-white transition-colors"
-          >
-            {loading ? "Debating…" : "Start debate"}
-          </button>
-          {loading && (
-            <p className="text-sm text-stone-500">
-              Watch each speaker appear as they respond…
-            </p>
-          )}
-        </div>
+      <main className="max-w-5xl mx-auto px-6 pb-20">
+        {/* Project info - collapsible */}
+        {showInfo && !hasContent && (
+          <section className="mb-12 animate-fade-in">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-8 backdrop-blur">
+              <h2 className="text-xl font-semibold text-slate-100 mb-4">About This Project</h2>
+              <p className="text-slate-400 leading-relaxed mb-4">
+                DebateMind simulates structured debates using multiple AI agents. Enter any controversial topic and watch as a Moderator introduces the debate, 
+                a Pro agent argues in favor, a Con agent argues against, and finally a Judge evaluates both sides using criteria like logical consistency, 
+                evidence strength, rebuttal effectiveness, and clarity.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div className="flex gap-3 p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                  <span className="text-amber-400 text-lg">🎯</span>
+                  <div>
+                    <span className="font-medium text-slate-200">Structured Reasoning</span>
+                    <p className="text-slate-500 mt-0.5">Multi-turn debate with opening arguments and rebuttals</p>
+                  </div>
+                </div>
+                <div className="flex gap-3 p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                  <span className="text-emerald-400 text-lg">⚡</span>
+                  <div>
+                    <span className="font-medium text-slate-200">Live Streaming</span>
+                    <p className="text-slate-500 mt-0.5">Watch each agent&apos;s response appear as it&apos;s generated</p>
+                  </div>
+                </div>
+                <div className="flex gap-3 p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                  <span className="text-violet-400 text-lg">⚖</span>
+                  <div>
+                    <span className="font-medium text-slate-200">Image & Document Context</span>
+                    <p className="text-slate-500 mt-0.5">Upload an image or PDF to debate based on it</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Input section */}
+        <section className="mb-12">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/30 p-8 space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-3">
+                Debate topic
+              </label>
+            </div>
+
+            {/* Image & Document context */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="rounded-xl border border-slate-700/50 bg-slate-800/30 p-4">
+                <p className="text-sm font-medium text-slate-300 mb-2">Add image context (optional)</p>
+                <p className="text-xs text-slate-500 mb-3">Debate based on what&apos;s in the image</p>
+                <div className="flex gap-3 items-start">
+                  <label className="cursor-pointer px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium transition-colors">
+                    <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                    Choose image
+                  </label>
+                  {imagePreview && (
+                    <div className="relative">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={imagePreview} alt="Preview" className="h-20 w-20 object-cover rounded-lg border border-slate-600" />
+                      <button onClick={clearImage} className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-rose-500 text-white text-xs flex items-center justify-center hover:bg-rose-400">×</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="rounded-xl border border-slate-700/50 bg-slate-800/30 p-4">
+                <p className="text-sm font-medium text-slate-300 mb-2">Add document context (optional)</p>
+                <p className="text-xs text-slate-500 mb-3">Debate based on PDF or text file</p>
+                <div className="flex gap-3 items-center">
+                  <label className="cursor-pointer px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium transition-colors">
+                    <input type="file" accept=".pdf,.txt" className="hidden" onChange={handleDocumentUpload} />
+                    Choose file
+                  </label>
+                  {documentName && (
+                    <span className="text-sm text-slate-400 truncate max-w-[120px]">
+                      {documentName}
+                      <button onClick={clearDocument} className="ml-2 text-rose-400 hover:text-rose-300">×</button>
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {(imagePreview || documentName) && (
+              <p className="text-sm text-amber-400/90">
+                ✓ Agents will base their arguments on your uploaded content
+              </p>
+            )}
+
+            <div className="flex flex-col sm:flex-row gap-4">
+              <input
+                type="text"
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                placeholder="e.g. Should AI replace human teachers?"
+                className="flex-1 rounded-xl border border-slate-700 bg-slate-800/50 px-5 py-4 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all"
+                disabled={loading}
+              />
+              <button
+                onClick={runDebate}
+                disabled={loading || !topic.trim()}
+                className="px-8 py-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed font-semibold text-slate-900 transition-all pulse-glow"
+              >
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="w-4 h-4 border-2 border-slate-900/30 border-t-slate-900 rounded-full animate-spin" />
+                    Debating…
+                  </span>
+                ) : (
+                  "Start debate"
+                )}
+              </button>
+            </div>
+            {loading && (
+              <p className="mt-3 text-sm text-slate-500">
+                Responses stream in real time. This may take 1–2 minutes.
+              </p>
+            )}
+          </div>
+        </section>
 
         {error && (
-          <div className="rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/50 p-4 text-rose-800 dark:text-rose-200 mb-8">
+          <div className="mb-8 rounded-xl border border-rose-500/30 bg-rose-950/20 p-5 text-rose-300">
             {error}
           </div>
         )}
 
+        {/* Debate transcript */}
         {hasContent && (
-          <section className="space-y-6">
-            <h2 className="text-lg font-semibold text-stone-800 dark:text-stone-200">
-              Topic: {topic}
-            </h2>
+          <section className="space-y-8 animate-fade-in">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-slate-200">
+                Topic: <span className="text-amber-400">{topic}</span>
+              </h2>
+              <span className="text-sm text-slate-500">
+                {transcript.length} exchange{transcript.length !== 1 ? "s" : ""}
+              </span>
+            </div>
 
             <div className="space-y-6">
               {transcript.map((entry, i) => {
                 const config = speakerConfig[entry.speaker] || {
                   label: entry.speaker,
-                  bg: "bg-stone-100 dark:bg-stone-800",
-                  border: "border-stone-400",
+                  bg: "from-slate-700/10 to-slate-800/5",
+                  border: "border-slate-600/50",
+                  accent: "text-slate-400",
                   icon: "•",
                 };
                 return (
                   <div
                     key={i}
-                    className={`flex gap-4 rounded-xl p-5 border-l-4 ${config.border} ${config.bg} shadow-sm`}
+                    className={`flex gap-6 rounded-2xl p-6 bg-gradient-to-br ${config.bg} border ${config.border} backdrop-blur shadow-xl animate-fade-in`}
+                    style={{ animationDelay: `${i * 50}ms` }}
                   >
-                    <div className="relative flex-shrink-0 w-14 h-14 rounded-full overflow-hidden bg-white dark:bg-stone-800 ring-2 ring-white/50 dark:ring-stone-700/50 flex items-center justify-center">
-                      <span className="absolute inset-0 flex items-center justify-center text-2xl bg-stone-200 dark:bg-stone-700">
+                    <div className="relative flex-shrink-0 w-16 h-16 rounded-2xl overflow-hidden bg-slate-800 ring-2 ring-slate-700/50 flex items-center justify-center">
+                      <span className="absolute inset-0 flex items-center justify-center text-2xl bg-slate-700">
                         {config.icon}
                       </span>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -193,10 +364,10 @@ export default function Home() {
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <span className="text-sm font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300">
+                      <span className={`text-sm font-bold uppercase tracking-widest ${config.accent}`}>
                         {config.label}
                       </span>
-                      <p className="mt-2 text-[15px] leading-relaxed whitespace-pre-wrap text-stone-800 dark:text-stone-200">
+                      <p className="mt-3 text-[15px] leading-relaxed whitespace-pre-wrap text-slate-300">
                         {entry.text}
                       </p>
                     </div>
@@ -205,53 +376,50 @@ export default function Home() {
               })}
             </div>
 
+            {/* Verdict */}
             {verdict && (
-              <div className="rounded-xl border-2 border-violet-300 dark:border-violet-700 bg-white dark:bg-stone-900 p-6 shadow-lg">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="relative w-12 h-12 rounded-full overflow-hidden bg-violet-100 dark:bg-violet-900/50 flex items-center justify-center">
-                    <span className="absolute inset-0 flex items-center justify-center text-2xl">⚖</span>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src="/judge.svg"
-                      alt=""
-                      className="absolute inset-0 w-full h-full object-cover z-10"
-                      onError={(e) => {
-                        e.currentTarget.style.visibility = "hidden";
-                      }}
-                    />
+              <div className="rounded-2xl border-2 border-violet-500/30 bg-gradient-to-br from-violet-950/30 to-slate-900/50 p-8 shadow-2xl animate-fade-in">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-14 h-14 rounded-2xl bg-violet-500/20 flex items-center justify-center text-2xl ring-2 ring-violet-500/30">
+                    ⚖
                   </div>
-                  <h3 className="text-lg font-bold text-violet-700 dark:text-violet-300">
-                    Verdict
-                  </h3>
-                </div>
-                <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
                   <div>
-                    <span className="font-medium text-emerald-700 dark:text-emerald-400">Pro</span>
-                    <span className="ml-2 font-mono">
+                    <h3 className="text-xl font-bold text-violet-300">
+                      Verdict
+                    </h3>
+                    <p className="text-slate-500 text-sm">Final evaluation</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-6 mb-6">
+                  <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                    <span className="text-emerald-400 font-semibold">Pro</span>
+                    <span className="ml-2 font-mono text-lg text-slate-200">
                       {verdict.pro_scores.total ??
                         verdict.pro_scores.logical_consistency +
                           verdict.pro_scores.evidence_strength +
                           verdict.pro_scores.rebuttal_effectiveness +
                           verdict.pro_scores.clarity}
                     </span>
-                    <span className="text-stone-500 dark:text-stone-400 ml-1">pts</span>
+                    <span className="text-slate-500 ml-1">pts</span>
                   </div>
-                  <div>
-                    <span className="font-medium text-rose-700 dark:text-rose-400">Con</span>
-                    <span className="ml-2 font-mono">
+                  <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20">
+                    <span className="text-rose-400 font-semibold">Con</span>
+                    <span className="ml-2 font-mono text-lg text-slate-200">
                       {verdict.con_scores.total ??
                         verdict.con_scores.logical_consistency +
                           verdict.con_scores.evidence_strength +
                           verdict.con_scores.rebuttal_effectiveness +
                           verdict.con_scores.clarity}
                     </span>
-                    <span className="text-stone-500 dark:text-stone-400 ml-1">pts</span>
+                    <span className="text-slate-500 ml-1">pts</span>
                   </div>
                 </div>
-                <p className="font-semibold text-stone-800 dark:text-stone-200">
-                  Winner: {verdict.winner.toUpperCase()}
-                </p>
-                <p className="mt-2 text-stone-600 dark:text-stone-400 text-sm leading-relaxed">
+                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 mb-4">
+                  <span className="text-amber-400 font-bold text-lg">
+                    Winner: {verdict.winner.toUpperCase()}
+                  </span>
+                </div>
+                <p className="text-slate-400 leading-relaxed">
                   {verdict.reasoning}
                 </p>
               </div>
