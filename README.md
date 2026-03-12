@@ -1,12 +1,26 @@
 # DebateMind — AI Multi-Agent Debate System
 
 <p align="center">
-  <strong>Multi-agent AI debate where Pro and Con agents argue a topic in real time, and impartial Judge(s) deliver structured, unbiased evaluations with detailed scoring.</strong>
+  <strong>Multi-agent AI debate system. Watch Pro and Con agents argue in real time, with an AI Judge delivering structured evaluations.</strong>
 </p>
 
 DebateMind is an intelligent debate simulation system that orchestrates four specialized AI agents—**Moderator**, **Pro**, **Con**, and **Judge**—to conduct structured debates on any topic. Users provide a debate topic (and optionally an image or document for context), choose the number of rounds and judges, and watch as agents present opening arguments, rebut one another with direct engagement, and receive a final verdict based on logical consistency, evidence strength, rebuttal effectiveness, and clarity.
 
 Inspired by the [Dr. Zero](https://arxiv.org/abs/2601.07055) paper and multi-agent dialectical reasoning systems.
+
+### UI Highlights
+
+- **Cyber-tactical dark theme** — Command-center aesthetic with grid background, neon accents (cyan, gold, green, red, purple)
+- **Three screens** — Setup (configure & launch), Live Debate (real-time streaming), Verdict (scores & judge panel)
+- **Debate History** — Last 3 debates saved in `localStorage`; click any to view the full transcript and verdict
+
+### Screens
+
+| Screen | Description |
+|--------|-------------|
+| **Setup** | Hero, agent pipeline (Moderator → Pro ↔ Con → Judge), form card (topic, rounds 1–5, judges 1–3, image/document upload), suggested topics, Debate History strip |
+| **Live Debate** | Sidebar (topic, config, active agents), round indicator, parallel execution badge, moderator + Pro/Con entries (side-by-side for same round) |
+| **Verdict** | Final verdict with trophy, score breakdown (progress bars), individual judge cards, debate execution flow, Start New Debate |
 
 ---
 
@@ -68,7 +82,7 @@ DebateMind simulates formal debates with:
 |---------|-------------|
 | **LLM Flexibility** | OpenAI API or any OpenAI-compatible endpoint (Ollama, local models). |
 | **CLI Mode** | `python run_cli.py` for terminal-only debates (text topic only). |
-| **Dark UI** | Next.js frontend with dark theme, role avatars, collapsible project info. |
+| **Cyber-tactical UI** | Next.js frontend with cyber-tactical dark theme, agent pipeline diagram, Debate History (last 3 debates), sidebar config, score breakdown with progress bars. |
 | **Structured Logging** | `debate started`, `agent response`, `judge verdict` for debugging. |
 | **Health Check** | `/health` endpoint for monitoring. |
 | **Docker** | Backend container for deployment. |
@@ -513,7 +527,7 @@ Document text capped at ~6000 chars.
 - **RAG:** ChromaDB/FAISS for evidence retrieval
 - **Agent Personas:** Economist, Philosopher, Scientist
 - **Self-Reflection:** Agents critique before posting
-- **Persistent Transcripts:** Store in `data/` for replay
+- **Debate History:** Backend persistence for unlimited history and cross-device sync (currently `localStorage`, last 3)
 
 ---
 
